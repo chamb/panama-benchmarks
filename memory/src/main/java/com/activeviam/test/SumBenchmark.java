@@ -58,13 +58,8 @@ public class SumBenchmark {
             this.inputArray = new double[SIZE];
             this.inputBuffer = ByteBuffer.allocateDirect(8 * SIZE);
             this.inputAddress = U.allocateMemory(8 * SIZE);
-            this.inputSegment = MemorySegment.ofNativeRestricted(
-                    MemoryAddress.ofLong(inputAddress),
-                    8*SIZE,
-                    null,
-                    null,
-                    null
-            );
+
+            this.inputSegment = MemoryAddress.ofLong(inputAddress).asSegmentRestricted(8*SIZE);
         }
     }
 
@@ -165,7 +160,7 @@ public class SumBenchmark {
             .varHandle(double.class, MemoryLayout.PathElement.sequenceElement());
 
     @Benchmark
-    public double _scalarMHI(Data state) {
+    public double scalarMHI(Data state) {
         final MemorySegment is = state.inputSegment;
         double sum = 0;
         for(int i = 0; i < SIZE; i++) {
@@ -175,7 +170,7 @@ public class SumBenchmark {
     }
 
     @Benchmark
-    public double _unrolledMHI(Data state) {
+    public double unrolledMHI(Data state) {
         final MemorySegment is = state.inputSegment;
         double sum1 = 0;
         double sum2 = 0;

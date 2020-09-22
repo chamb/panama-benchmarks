@@ -65,20 +65,8 @@ public class AddBenchmark {
             this.outputArray = new double[SIZE];
             this.inputAddress = U.allocateMemory(8 * SIZE);
             this.outputAddress = U.allocateMemory(8 * SIZE);
-            this.inputSegment = MemorySegment.ofNativeRestricted(
-                    MemoryAddress.ofLong(inputAddress),
-                    8*SIZE,
-                    null,
-                    null,
-                    null
-            );
-            this.outputSegment = MemorySegment.ofNativeRestricted(
-                    MemoryAddress.ofLong(outputAddress),
-                    8*SIZE,
-                    null,
-                    null,
-                    null
-            );
+            this.inputSegment = MemoryAddress.ofLong(inputAddress).asSegmentRestricted(8*SIZE);
+            this.outputSegment = MemoryAddress.ofLong(outputAddress).asSegmentRestricted(8*SIZE);
         }
     }
 
@@ -151,7 +139,7 @@ public class AddBenchmark {
             .varHandle(double.class, MemoryLayout.PathElement.sequenceElement());
 
     @Benchmark
-    public void _scalarMHI(Data state) {
+    public void scalarMHI(Data state) {
         final MemorySegment is = state.inputSegment;
         final MemorySegment os = state.outputSegment;
 
@@ -161,7 +149,7 @@ public class AddBenchmark {
     }
 
     @Benchmark
-    public void _scalarMHI2(Data state) {
+    public void scalarMHI_v2(Data state) {
         final MemorySegment is = state.inputSegment;
         final MemorySegment os = state.outputSegment;
 
@@ -171,7 +159,7 @@ public class AddBenchmark {
     }
 
     @Benchmark
-    public void _unrolledMHI(Data state) {
+    public void unrolledMHI(Data state) {
         final MemorySegment is = state.inputSegment;
         final MemorySegment os = state.outputSegment;
 
@@ -184,7 +172,7 @@ public class AddBenchmark {
     }
 
     @Benchmark
-    public void _unrolledMHI2(Data state) {
+    public void unrolledMHI_v2(Data state) {
         final MemorySegment is = state.inputSegment;
         final MemorySegment os = state.outputSegment;
 
