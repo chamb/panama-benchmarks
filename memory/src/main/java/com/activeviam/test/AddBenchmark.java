@@ -138,6 +138,9 @@ public class AddBenchmark {
     static final VarHandle MHI = MemoryLayout.ofSequence(SIZE, MemoryLayouts.JAVA_DOUBLE)
             .varHandle(double.class, MemoryLayout.PathElement.sequenceElement());
 
+    static final VarHandle MHI_L = MemoryLayout.ofSequence(SIZE, MemoryLayouts.JAVA_LONG)
+            .varHandle(long.class, MemoryLayout.PathElement.sequenceElement());
+
     @Benchmark
     public void scalarMHI(Data state) {
         final MemorySegment is = state.inputSegment;
@@ -172,6 +175,19 @@ public class AddBenchmark {
     }
 
     @Benchmark
+    public void unrolledMHI_long(Data state) {
+        final MemorySegment is = state.inputSegment;
+        final MemorySegment os = state.outputSegment;
+
+        for(int i = 0; i < SIZE; i+=4) {
+            MHI_L.set(os, (long) (i),   (long) MHI_L.get(is, (long) (i))   + (long) MHI_L.get(os, (long) (i)));
+            MHI_L.set(os, (long) (i+1), (long) MHI_L.get(is, (long) (i+1)) + (long) MHI_L.get(os, (long) (i+1)));
+            MHI_L.set(os, (long) (i+2), (long) MHI_L.get(is, (long) (i+2)) + (long) MHI_L.get(os, (long) (i+2)));
+            MHI_L.set(os, (long) (i+3), (long) MHI_L.get(is, (long) (i+3)) + (long) MHI_L.get(os, (long) (i+3)));
+        }
+    }
+
+    @Benchmark
     public void unrolledMHI_v2(Data state) {
         final MemorySegment is = state.inputSegment;
         final MemorySegment os = state.outputSegment;
@@ -181,6 +197,19 @@ public class AddBenchmark {
             setDoubleAtIndex(os, i+1,getDoubleAtIndex(is, i+1) + getDoubleAtIndex(os, i+1));
             setDoubleAtIndex(os, i+2,getDoubleAtIndex(is, i+2) + getDoubleAtIndex(os, i+2));
             setDoubleAtIndex(os, i+3,getDoubleAtIndex(is, i+3) + getDoubleAtIndex(os, i+3));
+        }
+    }
+
+    @Benchmark
+    public void unrolledMHI_v2_long(Data state) {
+        final MemorySegment is = state.inputSegment;
+        final MemorySegment os = state.outputSegment;
+
+        for(int i = 0; i < SIZE; i+=4) {
+            setLongAtIndex(os, i,getLongAtIndex(is, i) + MemoryAccess.getLongAtIndex(os, i));
+            setLongAtIndex(os, i+1,getLongAtIndex(is, i+1) + getLongAtIndex(os, i+1));
+            setLongAtIndex(os, i+2,getLongAtIndex(is, i+2) + getLongAtIndex(os, i+2));
+            setLongAtIndex(os, i+3,getLongAtIndex(is, i+3) + getLongAtIndex(os, i+3));
         }
     }
 
