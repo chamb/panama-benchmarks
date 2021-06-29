@@ -59,7 +59,7 @@ public class SumBenchmark {
             this.inputBuffer = ByteBuffer.allocateDirect(8 * SIZE);
             this.inputAddress = U.allocateMemory(8 * SIZE);
 
-            this.inputSegment = MemoryAddress.ofLong(inputAddress).asSegmentRestricted(8*SIZE);
+            this.inputSegment = MemoryAddress.ofLong(inputAddress).asSegment(8*SIZE, ResourceScope.globalScope());
         }
     }
 
@@ -156,7 +156,7 @@ public class SumBenchmark {
     }
 
 
-    static final VarHandle MHI = MemoryLayout.ofSequence(MemoryLayouts.JAVA_DOUBLE)
+    static final VarHandle MHI = MemoryLayout.sequenceLayout(MemoryLayouts.JAVA_DOUBLE)
             .varHandle(double.class, MemoryLayout.PathElement.sequenceElement());
 
     @Benchmark

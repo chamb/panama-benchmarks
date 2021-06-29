@@ -54,6 +54,8 @@ public class AddBenchmark {
 
         final double[] inputArray;
         final double[] outputArray;
+        final float[] inputArrayFloat;
+        final float[] outputArrayFloat;
         final long inputAddress;
         final long outputAddress;
         final MemorySegment inputSegment;
@@ -63,10 +65,12 @@ public class AddBenchmark {
         public Data() {
             this.inputArray = new double[SIZE];
             this.outputArray = new double[SIZE];
+            this.inputArrayFloat = new float[SIZE];
+            this.outputArrayFloat = new float[SIZE];
             this.inputAddress = U.allocateMemory(8 * SIZE);
             this.outputAddress = U.allocateMemory(8 * SIZE);
-            this.inputSegment = MemoryAddress.ofLong(inputAddress).asSegmentRestricted(8*SIZE);
-            this.outputSegment = MemoryAddress.ofLong(outputAddress).asSegmentRestricted(8*SIZE);
+            this.inputSegment = MemoryAddress.ofLong(inputAddress).asSegment(8*SIZE, ResourceScope.globalScope());
+            this.outputSegment = MemoryAddress.ofLong(outputAddress).asSegment(8*SIZE, ResourceScope.globalScope());
         }
     }
 
@@ -74,6 +78,15 @@ public class AddBenchmark {
     public void scalarArray(Data state) {
         final double[] input = state.inputArray;
         final double[] output = state.outputArray;
+        for(int i = 0; i < SIZE; i++) {
+            output[i] += input[i];
+        }
+    }
+
+    @Benchmark
+    public void scalarArray_float(Data state) {
+        final float[] input = state.inputArrayFloat;
+        final float[] output = state.outputArrayFloat;
         for(int i = 0; i < SIZE; i++) {
             output[i] += input[i];
         }
@@ -92,6 +105,7 @@ public class AddBenchmark {
     }
 
     static final VarHandle AH = MethodHandles.arrayElementVarHandle(double[].class);
+    static final VarHandle AHF = MethodHandles.arrayElementVarHandle(float[].class);
 
     @Benchmark
     public void scalarArrayHandle(Data state) {
@@ -99,6 +113,15 @@ public class AddBenchmark {
         final double[] output = state.outputArray;
         for(int i = 0; i < input.length; i++) {
             AH.set(output, i, (double) AH.get(input, i) + (double) AH.get(output, i));
+        }
+    }
+
+    @Benchmark
+    public void scalarArrayHandle_float(Data state) {
+        final float[] input = state.inputArrayFloat;
+        final float[] output = state.outputArrayFloat;
+        for(int i = 0; i < input.length; i++) {
+            AHF.set(output, i, (float) AHF.get(input, i) + (float) AHF.get(output, i));
         }
     }
 
@@ -135,10 +158,25 @@ public class AddBenchmark {
         }
     }
 
-    static final VarHandle MHI = MemoryLayout.ofSequence(SIZE, MemoryLayouts.JAVA_DOUBLE)
+    @Benchmark
+    public void unrolledUnsafe_float(Data state) {
+        final long ia = state.inputAddress;
+        final long oa = state.outputAddress;
+        for(int i = 0; i < SIZE; i+=4) {
+            U.putFloat(oa + 4*i, U.getFloat(ia + 4*i) + U.getFloat(oa + 4*i));
+            U.putFloat(oa + 4*(i+1), U.getFloat(ia + 4*(i+1)) + U.getFloat(oa + 4*(i+1)));
+            U.putFloat(oa + 4*(i+2), U.getFloat(ia + 4*(i+2)) + U.getFloat(oa + 4*(i+2)));
+            U.putFloat(oa + 4*(i+3), U.getFloat(ia + 4*(i+3)) + U.getFloat(oa + 4*(i+3)));
+        }
+    }
+
+    static final VarHandle MHI_D = MemoryLayout.sequenceLayout(SIZE, MemoryLayouts.JAVA_DOUBLE.withBitAlignment(8))
             .varHandle(double.class, MemoryLayout.PathElement.sequenceElement());
 
-    static final VarHandle MHI_L = MemoryLayout.ofSequence(SIZE, MemoryLayouts.JAVA_LONG)
+    static final VarHandle MHI_F = MemoryLayout.sequenceLayout(SIZE, MemoryLayouts.JAVA_FLOAT.withBitAlignment(8))
+            .varHandle(float.class, MemoryLayout.PathElement.sequenceElement());
+
+    static final VarHandle MHI_L = MemoryLayout.sequenceLayout(SIZE, MemoryLayouts.JAVA_LONG.withBitAlignment(8))
             .varHandle(long.class, MemoryLayout.PathElement.sequenceElement());
 
     @Benchmark
@@ -147,7 +185,7 @@ public class AddBenchmark {
         final MemorySegment os = state.outputSegment;
 
         for(int i = 0; i < SIZE; i++) {
-            MHI.set(os, (long) i, (double) MHI.get(is, (long) i) + (double) MHI.get(os, (long) i));
+            MHI_D.set(os, (long) i, (double) MHI_D.get(is, (long) i) + (double) MHI_D.get(os, (long) i));
         }
     }
 
@@ -167,10 +205,23 @@ public class AddBenchmark {
         final MemorySegment os = state.outputSegment;
 
         for(int i = 0; i < SIZE; i+=4) {
-            MHI.set(os, (long) (i),   (double) MHI.get(is, (long) (i))   + (double) MHI.get(os, (long) (i)));
-            MHI.set(os, (long) (i+1), (double) MHI.get(is, (long) (i+1)) + (double) MHI.get(os, (long) (i+1)));
-            MHI.set(os, (long) (i+2), (double) MHI.get(is, (long) (i+2)) + (double) MHI.get(os, (long) (i+2)));
-            MHI.set(os, (long) (i+3), (double) MHI.get(is, (long) (i+3)) + (double) MHI.get(os, (long) (i+3)));
+            MHI_D.set(os, (long) (i),   (double) MHI_D.get(is, (long) (i))   + (double) MHI_D.get(os, (long) (i)));
+            MHI_D.set(os, (long) (i+1), (double) MHI_D.get(is, (long) (i+1)) + (double) MHI_D.get(os, (long) (i+1)));
+            MHI_D.set(os, (long) (i+2), (double) MHI_D.get(is, (long) (i+2)) + (double) MHI_D.get(os, (long) (i+2)));
+            MHI_D.set(os, (long) (i+3), (double) MHI_D.get(is, (long) (i+3)) + (double) MHI_D.get(os, (long) (i+3)));
+        }
+    }
+
+    @Benchmark
+    public void unrolledMHI_float(Data state) {
+        final MemorySegment is = state.inputSegment;
+        final MemorySegment os = state.outputSegment;
+
+        for(int i = 0; i < SIZE; i+=4) {
+            MHI_F.set(os, (long) (i),   (float) MHI_F.get(is, (long) (i))   + (float) MHI_F.get(os, (long) (i)));
+            MHI_F.set(os, (long) (i+1), (float) MHI_F.get(is, (long) (i+1)) + (float) MHI_F.get(os, (long) (i+1)));
+            MHI_F.set(os, (long) (i+2), (float) MHI_F.get(is, (long) (i+2)) + (float) MHI_F.get(os, (long) (i+2)));
+            MHI_F.set(os, (long) (i+3), (float) MHI_F.get(is, (long) (i+3)) + (float) MHI_F.get(os, (long) (i+3)));
         }
     }
 
