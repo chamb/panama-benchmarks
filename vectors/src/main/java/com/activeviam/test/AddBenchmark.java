@@ -10,6 +10,9 @@ import org.openjdk.jmh.runner.options.Options;
 import org.openjdk.jmh.runner.options.OptionsBuilder;
 import sun.misc.Unsafe;
 
+import java.lang.foreign.MemorySegment;
+import java.lang.foreign.MemorySession;
+import java.lang.foreign.ValueLayout;
 import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -21,6 +24,8 @@ import java.nio.ByteOrder;
  * and the new Vector API.
  */
 public class AddBenchmark {
+
+    static final ValueLayout.OfDouble JAVA_DOUBLE = ValueLayout.JAVA_DOUBLE;
 
     static final Unsafe U = getUnsafe();
     static Unsafe getUnsafe() {
@@ -49,22 +54,18 @@ public class AddBenchmark {
     public static class Data {
         final double[] inputArray;
         final double[] outputArray;
-        final byte[] inputByteArray;
-        final byte[] outputByteArray;
-        final ByteBuffer inputBuffer;
-        final ByteBuffer outputBuffer;
+        final MemorySegment inputSegment;
+        final MemorySegment outputSegment;
         final long inputAddress;
         final long outputAddress;
 
         public Data() {
             this.inputArray = new double[SIZE];
             this.outputArray = new double[SIZE];
-            this.inputByteArray = new byte[8 * SIZE];
-            this.outputByteArray = new byte[8 * SIZE];
+            this.inputSegment = MemorySegment.allocateNative(8*SIZE, MemorySession.global());
+            this.outputSegment = MemorySegment.allocateNative(8*SIZE, MemorySession.global());
             this.inputAddress = U.allocateMemory(8 * SIZE);
             this.outputAddress = U.allocateMemory(8 * SIZE);
-            this.inputBuffer = ByteBuffer.allocateDirect(8 * SIZE);
-            this.outputBuffer = ByteBuffer.allocateDirect(8 * SIZE);
         }
     }
 
@@ -90,7 +91,7 @@ public class AddBenchmark {
     }
 
     @Benchmark
-    public void scalarArrayArrayLong(Data state) {
+    public void scalarArrayArrayLongStride(Data state) {
         final double[] input = state.inputArray;
         final double[] output = state.outputArray;
         // long stride defeats automatic unrolling
@@ -100,29 +101,32 @@ public class AddBenchmark {
     }
 
     @Benchmark
-    public void scalarArrayBuffer(Data state) {
-        final double[] input = state.inputArray;
-        final ByteBuffer output = state.outputBuffer;
-        for(int i = 0; i < input.length; i++) {
-            output.putDouble(i << 3, output.getDouble(i << 3) + input[i]);
+    public void scalarSegmentSegment(Data state) {
+        final MemorySegment input = state.inputSegment;
+        final MemorySegment output = state.outputSegment;
+        for(int i = 0; i < SIZE; i++) {
+            output.setAtIndex(JAVA_DOUBLE, i, output.getAtIndex(JAVA_DOUBLE, i) + input.getAtIndex(JAVA_DOUBLE, i));
         }
     }
 
     @Benchmark
-    public void scalarBufferArray(Data state) {
-        final ByteBuffer input = state.inputBuffer;
+    public void scalarSegmentArray(Data state) {
+        final MemorySegment input = state.inputSegment;
         final double[] output = state.outputArray;
-        for(int i = 0; i < input.capacity(); i+=8) {
-            output[i >>> 3] += input.getDouble(i);
+        for(int i = 0; i < SIZE; i++) {
+            output[i] += input.getAtIndex(JAVA_DOUBLE, i);
         }
     }
 
     @Benchmark
-    public void scalarBufferBuffer(Data state) {
-        final ByteBuffer input = state.inputBuffer;
-        final ByteBuffer output = state.outputBuffer;
-        for(int i = 0; i < input.capacity(); i+=8) {
-            output.putDouble(i, output.getDouble(i) + input.getDouble(i));
+    public void unrolledSegmentArray(Data state) {
+        final MemorySegment input = state.inputSegment;
+        final double[] output = state.outputArray;
+        for(int i = 0; i < SIZE; i+=4) {
+            output[i] += input.getAtIndex(JAVA_DOUBLE, i);
+            output[i+1] += input.getAtIndex(JAVA_DOUBLE, i+1);
+            output[i+2] += input.getAtIndex(JAVA_DOUBLE, i+2);
+            output[i+3] += input.getAtIndex(JAVA_DOUBLE, i+3);
         }
     }
 
@@ -186,53 +190,41 @@ public class AddBenchmark {
     }
 
     @Benchmark
-    public void vectorByteArrayByteArray(Data state) {
-        final byte[] input = state.inputByteArray;
-        final byte[] output = state.outputByteArray;
-
-        for (int i = 0; i < input.length; i += 8 * SPECIES.length()) {
-            DoubleVector a = DoubleVector.fromByteArray(SPECIES, input, i, ByteOrder.nativeOrder());
-            DoubleVector b = DoubleVector.fromByteArray(SPECIES, output, i, ByteOrder.nativeOrder());
+    public void vectorSegmentArray(Data state) {
+        final MemorySegment input = state.inputSegment;
+        final double[] output = state.outputArray;
+        for (int i = 0; i < SIZE; i+=SPECIES.length()) {
+            DoubleVector a = DoubleVector.fromMemorySegment(SPECIES, input, i, ByteOrder.nativeOrder());
+            DoubleVector b = DoubleVector.fromArray(SPECIES, output, i);
             a = a.add(b);
-            a.intoByteArray(output, i, ByteOrder.nativeOrder());
+            a.intoArray(output, i);
         }
     }
 
     @Benchmark
-    public void vectorBufferBuffer(Data state) {
-        final ByteBuffer input = state.inputBuffer;
-        final ByteBuffer output = state.outputBuffer;
-        for (int i = 0; i < input.capacity(); i += 8 * SPECIES.length()) {
-            DoubleVector a = DoubleVector.fromByteBuffer(SPECIES, input, i, ByteOrder.nativeOrder());
-            DoubleVector b = DoubleVector.fromByteBuffer(SPECIES, output, i, ByteOrder.nativeOrder());
+    public void vectorSegmentSegment(Data state) {
+        final MemorySegment input = state.inputSegment;
+        final MemorySegment output = state.outputSegment;
+        for (int i = 0; i < SIZE; i+=SPECIES.length()) {
+            DoubleVector a = DoubleVector.fromMemorySegment(SPECIES, input, i, ByteOrder.nativeOrder());
+            DoubleVector b = DoubleVector.fromMemorySegment(SPECIES, output, i, ByteOrder.nativeOrder());
             a = a.add(b);
-            a.intoByteBuffer(output, i, ByteOrder.nativeOrder());
+            a.intoMemorySegment(output, i, ByteOrder.nativeOrder());
         }
     }
 
     @Benchmark
-    public void vectorArrayBuffer(Data state) {
+    public void vectorArraySegment(Data state) {
         final double[] input = state.inputArray;
-        final ByteBuffer output = state.outputBuffer;
+        final MemorySegment output = state.outputSegment;
 
         for (int i = 0; i < input.length; i+=SPECIES.length()) {
             DoubleVector a = DoubleVector.fromArray(SPECIES, input, i);
-            DoubleVector b = DoubleVector.fromByteBuffer(SPECIES, output, i << 3, ByteOrder.nativeOrder());
+            DoubleVector b = DoubleVector.fromMemorySegment(SPECIES, output, i, ByteOrder.nativeOrder());
             a = a.add(b);
-            a.intoByteBuffer(output, i << 3, ByteOrder.nativeOrder());
+            a.intoMemorySegment(output, i, ByteOrder.nativeOrder());
         }
     }
 
-    @Benchmark
-    public void vectorBufferArray(Data state) {
-        final ByteBuffer input = state.inputBuffer;
-        final double[] output = state.outputArray;
-        for (int i = 0; i < input.capacity(); i += 8 * SPECIES.length()) {
-            DoubleVector a = DoubleVector.fromByteBuffer(SPECIES, input, i, ByteOrder.nativeOrder());
-            DoubleVector b = DoubleVector.fromArray(SPECIES, output, i >>> 3);
-            a = a.add(b);
-            a.intoArray(output, i >>> 3);
-        }
-    }
     
 }

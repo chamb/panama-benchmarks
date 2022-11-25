@@ -11,8 +11,11 @@ import org.openjdk.jmh.runner.options.Options;
 import org.openjdk.jmh.runner.options.OptionsBuilder;
 import sun.misc.Unsafe;
 
+import java.lang.foreign.MemorySegment;
+import java.lang.foreign.MemorySession;
 import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 
 /**
  * Benchmark the element wise aggregation of an array
@@ -49,13 +52,13 @@ public class SumBenchmark {
     public static class Data {
 
         final double[] inputArray;
-        final ByteBuffer inputBuffer;
+        final MemorySegment inputSegment;
         final long inputAddress;
 
 
         public Data() {
             this.inputArray = new double[SIZE];
-            this.inputBuffer = ByteBuffer.allocateDirect(8 * SIZE);
+            this.inputSegment = MemorySegment.allocateNative(8*SIZE, MemorySession.global());
             this.inputAddress = U.allocateMemory(8 * SIZE);
         }
     }
@@ -132,6 +135,27 @@ public class SumBenchmark {
         double sum = 0.0;
         for (int i = 0; i < input.length; i+=SPECIES.length()) {
             sum += DoubleVector.fromArray(SPECIES, input, i).reduceLanes(VectorOperators.ADD);
+        }
+        return sum;
+    }
+
+    @Benchmark
+    public double vectorSegmentV1(Data state) {
+        final MemorySegment input = state.inputSegment;
+        DoubleVector sum = DoubleVector.broadcast(SPECIES, 0.0);
+        for (int i = 0; i < SIZE; i+=SPECIES.length()) {
+            DoubleVector a = DoubleVector.fromMemorySegment(SPECIES, input, i, ByteOrder.nativeOrder());
+            sum = sum.add(a);
+        }
+        return sum.reduceLanes(VectorOperators.ADD);
+    }
+
+    @Benchmark
+    public double vectorSegmentV2(Data state) {
+        final MemorySegment input = state.inputSegment;
+        double sum = 0.0;
+        for (int i = 0; i < SIZE; i+=SPECIES.length()) {
+            sum += DoubleVector.fromMemorySegment(SPECIES, input, i, ByteOrder.nativeOrder()).reduceLanes(VectorOperators.ADD);
         }
         return sum;
     }

@@ -1,6 +1,7 @@
 package com.activeviam.test;
 
-import jdk.incubator.foreign.*;
+import static java.lang.foreign.ValueLayout.*;
+import java.lang.foreign.*;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.Scope;
 import org.openjdk.jmh.annotations.State;
@@ -58,8 +59,7 @@ public class SumBenchmark {
             this.inputArray = new double[SIZE];
             this.inputBuffer = ByteBuffer.allocateDirect(8 * SIZE);
             this.inputAddress = U.allocateMemory(8 * SIZE);
-
-            this.inputSegment = MemoryAddress.ofLong(inputAddress).asSegment(8*SIZE, ResourceScope.globalScope());
+            this.inputSegment = MemorySegment.allocateNative(8*SIZE, MemorySession.global());
         }
     }
 
@@ -156,11 +156,11 @@ public class SumBenchmark {
     }
 
 
-    static final VarHandle MHI = MemoryLayout.sequenceLayout(MemoryLayouts.JAVA_DOUBLE)
-            .varHandle(double.class, MemoryLayout.PathElement.sequenceElement());
+    static final VarHandle MHI = MemoryLayout.sequenceLayout(-1, JAVA_DOUBLE)
+            .varHandle(MemoryLayout.PathElement.sequenceElement());
 
     @Benchmark
-    public double scalarMHI(Data state) {
+    public double scalarSegmentHandle(Data state) {
         final MemorySegment is = state.inputSegment;
         double sum = 0;
         for(int i = 0; i < SIZE; i++) {
@@ -170,7 +170,23 @@ public class SumBenchmark {
     }
 
     @Benchmark
-    public double unrolledMHI(Data state) {
+    public double unrolledSegment(Data state) {
+        final MemorySegment is = state.inputSegment;
+        double sum1 = 0;
+        double sum2 = 0;
+        double sum3 = 0;
+        double sum4 = 0;
+        for(int i = 0; i < SIZE; i+=4) {
+            sum1 += (double) is.getAtIndex(JAVA_DOUBLE, (long)(i));
+            sum2 += (double) is.getAtIndex(JAVA_DOUBLE, (long)(i+1));
+            sum3 += (double) is.getAtIndex(JAVA_DOUBLE, (long)(i+2));
+            sum4 += (double) is.getAtIndex(JAVA_DOUBLE, (long)(i+3));
+        }
+        return sum1+sum2+sum3+sum4;
+    }
+
+    @Benchmark
+    public double unrolledSegmentHandle(Data state) {
         final MemorySegment is = state.inputSegment;
         double sum1 = 0;
         double sum2 = 0;

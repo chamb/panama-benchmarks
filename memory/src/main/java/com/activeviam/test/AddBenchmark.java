@@ -1,7 +1,7 @@
 package com.activeviam.test;
 
-import static jdk.incubator.foreign.MemoryAccess.*;
-import jdk.incubator.foreign.*;
+import static java.lang.foreign.ValueLayout.*;
+import java.lang.foreign.*;
 import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.runner.Runner;
 import org.openjdk.jmh.runner.options.Options;
@@ -21,7 +21,7 @@ import java.lang.reflect.Field;
 public class AddBenchmark {
 
     static {
-        System.setProperty("jdk.incubator.foreign.Foreign","permit");
+        System.setProperty("java.lang.foreign.Foreign","permit");
     }
 
     static final Unsafe U = getUnsafe();
@@ -69,8 +69,8 @@ public class AddBenchmark {
             this.outputArrayFloat = new float[SIZE];
             this.inputAddress = U.allocateMemory(8 * SIZE);
             this.outputAddress = U.allocateMemory(8 * SIZE);
-            this.inputSegment = MemoryAddress.ofLong(inputAddress).asSegment(8*SIZE, ResourceScope.globalScope());
-            this.outputSegment = MemoryAddress.ofLong(outputAddress).asSegment(8*SIZE, ResourceScope.globalScope());
+            this.inputSegment = MemorySegment.allocateNative(8*SIZE, MemorySession.global());
+            this.outputSegment = MemorySegment.allocateNative(8*SIZE, MemorySession.global());
         }
     }
 
@@ -170,17 +170,17 @@ public class AddBenchmark {
         }
     }
 
-    static final VarHandle MHI_D = MemoryLayout.sequenceLayout(SIZE, MemoryLayouts.JAVA_DOUBLE.withBitAlignment(8))
-            .varHandle(double.class, MemoryLayout.PathElement.sequenceElement());
+    static final VarHandle MHI_D = MemoryLayout.sequenceLayout(SIZE, ValueLayout.JAVA_DOUBLE)
+            .varHandle(MemoryLayout.PathElement.sequenceElement());
 
-    static final VarHandle MHI_F = MemoryLayout.sequenceLayout(SIZE, MemoryLayouts.JAVA_FLOAT.withBitAlignment(8))
-            .varHandle(float.class, MemoryLayout.PathElement.sequenceElement());
+    static final VarHandle MHI_F = MemoryLayout.sequenceLayout(SIZE, ValueLayout.JAVA_FLOAT)
+            .varHandle(MemoryLayout.PathElement.sequenceElement());
 
-    static final VarHandle MHI_L = MemoryLayout.sequenceLayout(SIZE, MemoryLayouts.JAVA_LONG.withBitAlignment(8))
-            .varHandle(long.class, MemoryLayout.PathElement.sequenceElement());
+    static final VarHandle MHI_L = MemoryLayout.sequenceLayout(SIZE, ValueLayout.JAVA_LONG)
+            .varHandle(MemoryLayout.PathElement.sequenceElement());
 
     @Benchmark
-    public void scalarMHI(Data state) {
+    public void scalarSegmentHandle(Data state) {
         final MemorySegment is = state.inputSegment;
         final MemorySegment os = state.outputSegment;
 
@@ -190,17 +190,30 @@ public class AddBenchmark {
     }
 
     @Benchmark
-    public void scalarMHI_v2(Data state) {
+    public void scalarSegment(Data state) {
         final MemorySegment is = state.inputSegment;
         final MemorySegment os = state.outputSegment;
 
         for(int i = 0; i < SIZE; i++) {
-            setDoubleAtIndex(os, i,getDoubleAtIndex(is, i) + getDoubleAtIndex(os, i));
+            os.setAtIndex(JAVA_DOUBLE, (long) i, is.getAtIndex(JAVA_DOUBLE, (long) i) + is.getAtIndex(JAVA_DOUBLE, (long) i));
         }
     }
 
     @Benchmark
-    public void unrolledMHI(Data state) {
+    public void unrolledSegment(Data state) {
+        final MemorySegment is = state.inputSegment;
+        final MemorySegment os = state.outputSegment;
+
+        for(int i = 0; i < SIZE; i+=4) {
+            os.setAtIndex(JAVA_DOUBLE, i, is.getAtIndex(JAVA_DOUBLE, i) + is.getAtIndex(JAVA_DOUBLE, i));
+            os.setAtIndex(JAVA_DOUBLE, i+1, is.getAtIndex(JAVA_DOUBLE, i+1) + is.getAtIndex(JAVA_DOUBLE, i+1));
+            os.setAtIndex(JAVA_DOUBLE, i+2, is.getAtIndex(JAVA_DOUBLE, i+2) + is.getAtIndex(JAVA_DOUBLE, i+2));
+            os.setAtIndex(JAVA_DOUBLE, i+3, is.getAtIndex(JAVA_DOUBLE, i+3) + is.getAtIndex(JAVA_DOUBLE, i+3));
+        }
+    }
+
+    @Benchmark
+    public void unrolledSegmentHandle(Data state) {
         final MemorySegment is = state.inputSegment;
         final MemorySegment os = state.outputSegment;
 
@@ -213,20 +226,20 @@ public class AddBenchmark {
     }
 
     @Benchmark
-    public void unrolledMHI_float(Data state) {
+    public void unrolledSegment_long(Data state) {
         final MemorySegment is = state.inputSegment;
         final MemorySegment os = state.outputSegment;
 
         for(int i = 0; i < SIZE; i+=4) {
-            MHI_F.set(os, (long) (i),   (float) MHI_F.get(is, (long) (i))   + (float) MHI_F.get(os, (long) (i)));
-            MHI_F.set(os, (long) (i+1), (float) MHI_F.get(is, (long) (i+1)) + (float) MHI_F.get(os, (long) (i+1)));
-            MHI_F.set(os, (long) (i+2), (float) MHI_F.get(is, (long) (i+2)) + (float) MHI_F.get(os, (long) (i+2)));
-            MHI_F.set(os, (long) (i+3), (float) MHI_F.get(is, (long) (i+3)) + (float) MHI_F.get(os, (long) (i+3)));
+            os.setAtIndex(JAVA_LONG, i, os.getAtIndex(JAVA_LONG, i) + is.getAtIndex(JAVA_LONG, i));
+            os.setAtIndex(JAVA_LONG, i+1, os.getAtIndex(JAVA_LONG, i+1) + is.getAtIndex(JAVA_LONG, i+1));
+            os.setAtIndex(JAVA_LONG, i+2, os.getAtIndex(JAVA_LONG, i+2) + is.getAtIndex(JAVA_LONG, i+2));
+            os.setAtIndex(JAVA_LONG, i+3, os.getAtIndex(JAVA_LONG, i+3) + is.getAtIndex(JAVA_LONG, i+3));
         }
     }
 
     @Benchmark
-    public void unrolledMHI_long(Data state) {
+    public void unrolledSegmentHandle_long(Data state) {
         final MemorySegment is = state.inputSegment;
         final MemorySegment os = state.outputSegment;
 
@@ -239,29 +252,15 @@ public class AddBenchmark {
     }
 
     @Benchmark
-    public void unrolledMHI_v2(Data state) {
+    public void unrolledSegmentHandle_float(Data state) {
         final MemorySegment is = state.inputSegment;
         final MemorySegment os = state.outputSegment;
 
         for(int i = 0; i < SIZE; i+=4) {
-            setDoubleAtIndex(os, i,getDoubleAtIndex(is, i) + MemoryAccess.getDoubleAtIndex(os, i));
-            setDoubleAtIndex(os, i+1,getDoubleAtIndex(is, i+1) + getDoubleAtIndex(os, i+1));
-            setDoubleAtIndex(os, i+2,getDoubleAtIndex(is, i+2) + getDoubleAtIndex(os, i+2));
-            setDoubleAtIndex(os, i+3,getDoubleAtIndex(is, i+3) + getDoubleAtIndex(os, i+3));
+            MHI_F.set(os, (long) (i),   (float) MHI_F.get(is, (long) (i))   + (float) MHI_F.get(os, (long) (i)));
+            MHI_F.set(os, (long) (i+1), (float) MHI_F.get(is, (long) (i+1)) + (float) MHI_F.get(os, (long) (i+1)));
+            MHI_F.set(os, (long) (i+2), (float) MHI_F.get(is, (long) (i+2)) + (float) MHI_F.get(os, (long) (i+2)));
+            MHI_F.set(os, (long) (i+3), (float) MHI_F.get(is, (long) (i+3)) + (float) MHI_F.get(os, (long) (i+3)));
         }
     }
-
-    @Benchmark
-    public void unrolledMHI_v2_long(Data state) {
-        final MemorySegment is = state.inputSegment;
-        final MemorySegment os = state.outputSegment;
-
-        for(int i = 0; i < SIZE; i+=4) {
-            setLongAtIndex(os, i,getLongAtIndex(is, i) + MemoryAccess.getLongAtIndex(os, i));
-            setLongAtIndex(os, i+1,getLongAtIndex(is, i+1) + getLongAtIndex(os, i+1));
-            setLongAtIndex(os, i+2,getLongAtIndex(is, i+2) + getLongAtIndex(os, i+2));
-            setLongAtIndex(os, i+3,getLongAtIndex(is, i+3) + getLongAtIndex(os, i+3));
-        }
-    }
-
 }
