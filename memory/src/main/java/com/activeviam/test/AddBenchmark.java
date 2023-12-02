@@ -51,11 +51,12 @@ public class AddBenchmark {
 
     @State(Scope.Benchmark)
     public static class Data {
-
         final double[] inputArray;
         final double[] outputArray;
         final float[] inputArrayFloat;
         final float[] outputArrayFloat;
+        final byte[] inputBytes;
+        final byte[] outputBytes;
         final long inputAddress;
         final long outputAddress;
         final MemorySegment inputSegment;
@@ -67,6 +68,8 @@ public class AddBenchmark {
             this.outputArray = new double[SIZE];
             this.inputArrayFloat = new float[SIZE];
             this.outputArrayFloat = new float[SIZE];
+            this.inputBytes = new byte[8 * SIZE];
+            this.outputBytes = new byte[8 * SIZE];
             this.inputAddress = U.allocateMemory(8 * SIZE);
             this.outputAddress = U.allocateMemory(8 * SIZE);
             this.inputSegment = MemorySegment.allocateNative(8*SIZE, MemorySession.global());
@@ -143,6 +146,37 @@ public class AddBenchmark {
         final long oa = state.outputAddress;
         for(int i = 0; i < SIZE; i++) {
             U.putDouble(oa + 8*i, U.getDouble(ia + 8*i) + U.getDouble(oa + 8*i));
+        }
+    }
+
+    @Benchmark
+    public void manualLittleEndian(Data state) {
+        final byte[] in = state.inputBytes;
+        final byte[] out = state.outputBytes;
+        if(in.length != out.length)
+            throw new IllegalStateException("array sizes differend");
+
+        for(int i = 0; i < in.length; i += 8) {
+            double a = Double.longBitsToDouble((in[i] & 255L) | (in[i+1] & 255L) << 8
+                     | (in[i+2] & 255L) << 16 | (in[i+3] & 255L) << 24
+                     | (in[i+4] & 255L) << 32 | (in[i+5] & 255L) << 40
+                     | (in[i+6] & 255L) << 48 | (in[i+7] & 255L) << 56
+            );
+            double b = Double.longBitsToDouble((out[i] & 255L) | (out[i+1] & 255L) << 8
+                     | (out[i+2] & 255L) << 16 | (out[i+3] & 255L) << 24
+                     | (out[i+4] & 255L) << 32 | (out[i+5] & 255L) << 40
+                     | (out[i+6] & 255L) << 48 | (out[i+7] & 255L) << 56
+            );
+
+            long sum = Double.doubleToRawLongBits(a + b);
+            out[i+0] = (byte)sum;
+            out[i+1] = (byte)(sum >>> 8);
+            out[i+2] = (byte)(sum >>> 16);
+            out[i+3] = (byte)(sum >>> 24);
+            out[i+4] = (byte)(sum >>> 32);
+            out[i+5] = (byte)(sum >>> 40);
+            out[i+6] = (byte)(sum >>> 48);
+            out[i+7] = (byte)(sum >>> 56);
         }
     }
 
