@@ -69,8 +69,8 @@ public class AddBenchmark {
             this.outputArrayFloat = new float[SIZE];
             this.inputAddress = U.allocateMemory(8 * SIZE);
             this.outputAddress = U.allocateMemory(8 * SIZE);
-            this.inputSegment = MemorySegment.allocateNative(8*SIZE, MemorySession.global());
-            this.outputSegment = MemorySegment.allocateNative(8*SIZE, MemorySession.global());
+            this.inputSegment = Arena.global().allocate(8*SIZE, 8);
+            this.outputSegment = Arena.global().allocate(8*SIZE, 8);
         }
     }
 
