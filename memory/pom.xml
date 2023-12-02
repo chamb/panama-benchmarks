@@ -56,9 +56,9 @@
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>3.10.1</version>
                 <configuration>
-                    <compilerVersion>20</compilerVersion>
-                    <source>20</source>
-                    <target>20</target>
+                    <compilerVersion>21</compilerVersion>
+                    <source>21</source>
+                    <target>21</target>
 
 					<!-- without forking compilation happens in the
 						same process, so no arguments are applied -->

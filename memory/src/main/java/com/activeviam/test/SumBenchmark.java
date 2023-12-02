@@ -59,7 +59,7 @@ public class SumBenchmark {
             this.inputArray = new double[SIZE];
             this.inputBuffer = ByteBuffer.allocateDirect(8 * SIZE);
             this.inputAddress = U.allocateMemory(8 * SIZE);
-            this.inputSegment = MemorySegment.allocateNative(8*SIZE, MemorySession.global());
+            this.inputSegment = Arena.global().allocate(8*SIZE, 8);
         }
     }
 
