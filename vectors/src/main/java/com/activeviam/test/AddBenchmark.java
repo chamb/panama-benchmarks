@@ -10,11 +10,10 @@ import org.openjdk.jmh.runner.options.Options;
 import org.openjdk.jmh.runner.options.OptionsBuilder;
 import sun.misc.Unsafe;
 
+import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
-import java.lang.foreign.MemorySession;
 import java.lang.foreign.ValueLayout;
 import java.lang.reflect.Field;
-import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
 /**
@@ -26,6 +25,8 @@ import java.nio.ByteOrder;
 public class AddBenchmark {
 
     static final ValueLayout.OfDouble JAVA_DOUBLE = ValueLayout.JAVA_DOUBLE;
+
+    static final Arena GLOBAL_ARENA = Arena.global();
 
     static final Unsafe U = getUnsafe();
     static Unsafe getUnsafe() {
@@ -62,8 +63,10 @@ public class AddBenchmark {
         public Data() {
             this.inputArray = new double[SIZE];
             this.outputArray = new double[SIZE];
-            this.inputSegment = MemorySegment.allocateNative(8*SIZE, MemorySession.global());
-            this.outputSegment = MemorySegment.allocateNative(8*SIZE, MemorySession.global());
+
+            this.inputSegment = GLOBAL_ARENA.allocate(8 * SIZE);
+            this.outputSegment = GLOBAL_ARENA.allocate(8 * SIZE);
+
             this.inputAddress = U.allocateMemory(8 * SIZE);
             this.outputAddress = U.allocateMemory(8 * SIZE);
         }

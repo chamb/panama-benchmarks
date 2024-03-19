@@ -11,10 +11,10 @@ import org.openjdk.jmh.runner.options.Options;
 import org.openjdk.jmh.runner.options.OptionsBuilder;
 import sun.misc.Unsafe;
 
+import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
-import java.lang.foreign.MemorySession;
+import java.lang.foreign.ValueLayout;
 import java.lang.reflect.Field;
-import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
 /**
@@ -48,6 +48,8 @@ public class SumBenchmark {
 
     final static int SIZE = 1024;
 
+    static final Arena GLOBAL_ARENA = Arena.global();
+
     @State(Scope.Benchmark)
     public static class Data {
 
@@ -58,7 +60,7 @@ public class SumBenchmark {
 
         public Data() {
             this.inputArray = new double[SIZE];
-            this.inputSegment = MemorySegment.allocateNative(8*SIZE, MemorySession.global());
+            this.inputSegment = GLOBAL_ARENA.allocate(8 * SIZE);
             this.inputAddress = U.allocateMemory(8 * SIZE);
         }
     }
