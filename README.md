@@ -1,8 +1,8 @@
 # panama-benchmarks
-Benchmarks of new features in the Java Panama project
+Benchmarks of new memory access and vector APIs in the Java Panama project.
 
-**/memory**
-benchmarks of the foreign memory support, comparing the performance of native memory segments, arrays and native memory accessed with Unsafe.
+**/AddBenchmark**
+Benchmark the element-wise addition of two arrays of numbers. We test over standard Java arrays and (off-heap) native memory accessed via Unsafe and via the MemorySegment API. Using and not usingthe vector API.
 
-**/vectors**
-benchmarks of the vectors API, comparing the performance of vectorized and scalar code, on data stored in arrays, buffers and native memory accessed with Unsafe.
+**/SumBenchmark**
+Benchmark the sum of all the elements in an array of numbers. We test over standard Java arrays and (off-heap) native memory accessed via Unsafe and via the MemorySegment API. Using and not usingthe vector API.
