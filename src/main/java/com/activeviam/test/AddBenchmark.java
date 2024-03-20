@@ -197,7 +197,7 @@ public class AddBenchmark {
         final MemorySegment input = state.inputSegment;
         final double[] output = state.outputArray;
         for (int i = 0; i < SIZE; i+=SPECIES.length()) {
-            DoubleVector a = DoubleVector.fromMemorySegment(SPECIES, input, i, ByteOrder.nativeOrder());
+            DoubleVector a = DoubleVector.fromMemorySegment(SPECIES, input, 8*i, ByteOrder.nativeOrder());
             DoubleVector b = DoubleVector.fromArray(SPECIES, output, i);
             a = a.add(b);
             a.intoArray(output, i);
@@ -209,10 +209,10 @@ public class AddBenchmark {
         final MemorySegment input = state.inputSegment;
         final MemorySegment output = state.outputSegment;
         for (int i = 0; i < SIZE; i+=SPECIES.length()) {
-            DoubleVector a = DoubleVector.fromMemorySegment(SPECIES, input, i, ByteOrder.nativeOrder());
-            DoubleVector b = DoubleVector.fromMemorySegment(SPECIES, output, i, ByteOrder.nativeOrder());
+            DoubleVector a = DoubleVector.fromMemorySegment(SPECIES, input, 8*i, ByteOrder.nativeOrder());
+            DoubleVector b = DoubleVector.fromMemorySegment(SPECIES, output, 8*i, ByteOrder.nativeOrder());
             a = a.add(b);
-            a.intoMemorySegment(output, i, ByteOrder.nativeOrder());
+            a.intoMemorySegment(output, 8*i, ByteOrder.nativeOrder());
         }
     }
 
@@ -223,9 +223,9 @@ public class AddBenchmark {
 
         for (int i = 0; i < input.length; i+=SPECIES.length()) {
             DoubleVector a = DoubleVector.fromArray(SPECIES, input, i);
-            DoubleVector b = DoubleVector.fromMemorySegment(SPECIES, output, i, ByteOrder.nativeOrder());
+            DoubleVector b = DoubleVector.fromMemorySegment(SPECIES, output, 8*i, ByteOrder.nativeOrder());
             a = a.add(b);
-            a.intoMemorySegment(output, i, ByteOrder.nativeOrder());
+            a.intoMemorySegment(output, 8*i, ByteOrder.nativeOrder());
         }
     }
 

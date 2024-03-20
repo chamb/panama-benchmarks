@@ -109,7 +109,7 @@ public class SumBenchmark {
         double sum2 = 0;
         double sum3 = 0;
         double sum4 = 0;
-        for(int i = 0; i < SIZE; i++) {
+        for(int i = 0; i < SIZE; i+=4) {
             sum1 += U.getDouble(inputAddress + 8*i);
             sum2 += U.getDouble(inputAddress + 8*(i+1));
             sum3 += U.getDouble(inputAddress + 8*(i+2));
@@ -146,7 +146,7 @@ public class SumBenchmark {
         final MemorySegment input = state.inputSegment;
         DoubleVector sum = DoubleVector.broadcast(SPECIES, 0.0);
         for (int i = 0; i < SIZE; i+=SPECIES.length()) {
-            DoubleVector a = DoubleVector.fromMemorySegment(SPECIES, input, i, ByteOrder.nativeOrder());
+            DoubleVector a = DoubleVector.fromMemorySegment(SPECIES, input, 8*i, ByteOrder.nativeOrder());
             sum = sum.add(a);
         }
         return sum.reduceLanes(VectorOperators.ADD);
@@ -157,7 +157,7 @@ public class SumBenchmark {
         final MemorySegment input = state.inputSegment;
         double sum = 0.0;
         for (int i = 0; i < SIZE; i+=SPECIES.length()) {
-            sum += DoubleVector.fromMemorySegment(SPECIES, input, i, ByteOrder.nativeOrder()).reduceLanes(VectorOperators.ADD);
+            sum += DoubleVector.fromMemorySegment(SPECIES, input, 8*i, ByteOrder.nativeOrder()).reduceLanes(VectorOperators.ADD);
         }
         return sum;
     }
