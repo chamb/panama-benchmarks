@@ -59,6 +59,7 @@ public class AddBenchmark {
         final MemorySegment outputSegment;
         final long inputAddress;
         final long outputAddress;
+        double checksum;
 
         public Data() {
             this.inputArray = new double[SIZE];
@@ -69,6 +70,17 @@ public class AddBenchmark {
 
             this.inputAddress = U.allocateMemory(8 * SIZE);
             this.outputAddress = U.allocateMemory(8 * SIZE);
+
+            this.checksum = 0;
+            for (int i = 0; i < SIZE; i++) {
+                this.inputArray[i] = i;
+                this.inputSegment.setAtIndex(JAVA_DOUBLE, i, (double) i);
+                this.outputSegment.setAtIndex(JAVA_DOUBLE, i, 0.0);
+                U.putDouble(this.inputAddress, 8*i, (double) i);
+                U.putDouble(this.outputAddress, 8*i, 0.0);
+                checksum += i;
+            }
+            System.out.println("Checksum: " + this.checksum);
         }
     }
 
@@ -228,6 +240,5 @@ public class AddBenchmark {
             a.intoMemorySegment(output, 8*i, ByteOrder.nativeOrder());
         }
     }
-
     
 }
