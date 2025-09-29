@@ -49,8 +49,8 @@
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>3.13.0</version>
                 <configuration>
-                    <source>24</source>
-                    <target>24</target>
+                    <source>25</source>
+                    <target>25</target>
 
 					<!-- without forking compilation happens in the
 						same process, so no arguments are applied -->
@@ -64,7 +64,6 @@
 					<fork>true</fork>
 					<compilerArgs>
 						<arg>--add-modules=jdk.incubator.vector</arg>
-                        <arg>--enable-preview</arg>
 					</compilerArgs>
                 </configuration>
             </plugin>

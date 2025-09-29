@@ -1,5 +1,16 @@
 package com.activeviam.test;
 
+import org.openjdk.jmh.annotations.Benchmark;
+import org.openjdk.jmh.annotations.BenchmarkMode;
+import org.openjdk.jmh.annotations.Fork;
+import org.openjdk.jmh.annotations.Measurement;
+import org.openjdk.jmh.annotations.Mode;
+import org.openjdk.jmh.annotations.OutputTimeUnit;
+import org.openjdk.jmh.annotations.Scope;
+import org.openjdk.jmh.annotations.Setup;
+import org.openjdk.jmh.annotations.State;
+import org.openjdk.jmh.annotations.TearDown;
+import org.openjdk.jmh.annotations.Warmup;
 import jdk.incubator.vector.DoubleVector;
 import jdk.incubator.vector.VectorSpecies;
 import org.openjdk.jmh.annotations.Benchmark;
@@ -15,6 +26,8 @@ import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout;
 import java.lang.reflect.Field;
 import java.nio.ByteOrder;
+
+import java.util.concurrent.TimeUnit;
 
 /**
  * Benchmark the element wise aggregation of an array
@@ -43,6 +56,7 @@ public class AddBenchmark {
     public static void main(String[] params) throws Exception {
         Options opt = new OptionsBuilder()
             .include(AddBenchmark.class.getSimpleName())
+                .mode(Mode.AverageTime)
             .forks(1)
             .build();
 
@@ -80,7 +94,7 @@ public class AddBenchmark {
                 U.putDouble(this.outputAddress, 8*i, 0.0);
                 checksum += i;
             }
-            System.out.println("Checksum: " + this.checksum);
+            // System.out.println("Checksum: " + this.checksum);
         }
     }
 
